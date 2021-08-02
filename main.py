@@ -10,11 +10,19 @@ SHORT_BREAK_MIN = 5
 LONG_BREAK_MIN = 20
 reps = 0
 timer = None
+current_time = 0
 
 
 # ----------------------------- DISABLE BUTTON ------------------------------- #
 def disable_start_button():
     start_button["state"] = DISABLED
+
+
+def disable_pause_button():
+    if reps == 0:
+        pause_button["state"] = DISABLED
+    else:
+        pause_button["state"] = NORMAL
 
 
 # ---------------------------- TIMER RESET ------------------------------- #
@@ -30,13 +38,24 @@ def reset_timer():
     start_button["state"] = NORMAL
 
 
+# ---------------------------- Pause Timer ----------------------- #
+def pause():
+    if pause_button["text"] == "Pause":
+        pause_button.config(text="Resume")
+        window.after_cancel(timer)
+    elif pause_button["text"] == "Resume":
+        pause_button.config(text="Pause")
+        count_down(current_time)
+
+
 # ---------------------------- TIMER MECHANISM ------------------------------- #
 def start_timer():
     global reps
     reps += 1
     
     disable_start_button()
-
+    disable_pause_button()
+    
     if reps % 8 == 0:
         timer_label.config(text="Break", fg=RED)
         count_down(LONG_BREAK_MIN * 60)
@@ -51,6 +70,9 @@ def start_timer():
 # ---------------------------- COUNTDOWN MECHANISM ------------------------------- #
 def count_down(count):
     # Count == seconds
+    global current_time
+    current_time = count
+
     minutes = count // 60
     seconds = count % 60
 
@@ -64,19 +86,19 @@ def count_down(count):
         global timer
         timer = window.after(1000, count_down, count - 1)
     else:
-        # add checkmarks for every successful session
+        # lift window to foreground
         window.lift()
         window.attributes("-topmost", True)
         window.after_idle(window.attributes, "-topmost", False)
 
-        start_timer()
+        # display checkmarks
         marks = ""
         for _ in range(reps//2):
             marks += "✓"
         check_label.config(text=marks)
 
+        # keep track of total sessions
         if reps % 2 == 0:
-            # keep track of total sessions
             with open("total_sessions.txt") as file:
                 total_session = file.read()
 
@@ -87,6 +109,7 @@ def count_down(count):
 
             total_label.config(text=f"Completed tomatoes: {total}")
 
+        start_timer()
 
 # ---------------------------- UI SETUP ------------------------------- #
 # Window
@@ -106,7 +129,7 @@ timer_label = Label(text="Timer", fg=GREEN, bg=YELLOW, font=(FONT_NAME, 35, "bol
 timer_label.grid(row=0, column=1)
 
 check_label = Label(fg=GREEN, bg=YELLOW, font=(FONT_NAME, 15, "bold"))
-check_label.grid(row=3, column=1)
+check_label.grid(row=2, column=1)
 
 with open("total_sessions.txt") as file:
     total_sessions = file.read()
@@ -117,6 +140,10 @@ total_label.grid(row=4, column=1)
 # Buttons
 start_button = Button(text="Start", font=(FONT_NAME, 10, "bold"), bg=GREEN, highlightthickness=0, command=start_timer)
 start_button.grid(row=2, column=0)
+
+pause_button = Button(text="Pause", font=(FONT_NAME, 10, "bold"), bg=YELLOW, command=pause)
+pause_button.grid(row=3, column=1)
+disable_pause_button()
 
 reset_button = Button(text="Reset", font=(FONT_NAME, 10, "bold"), bg=PINK, highlightthickness=0, command=reset_timer)
 reset_button.grid(row=2, column=2)
